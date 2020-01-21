@@ -1,0 +1,8 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Sandbox stuff
+*/.ipynb_checkpoints
+*.ipynb_checkpoints
