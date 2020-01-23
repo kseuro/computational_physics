@@ -6,3 +6,5 @@ __pycache__/
 # Sandbox stuff
 */.ipynb_checkpoints
 *.ipynb_checkpoints
+
+.DS_store
