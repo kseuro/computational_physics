@@ -9,6 +9,7 @@ __pycache__/
 
 .DS_store
 
+*.ogv
 *.zip
 *.key
 *.mp4
