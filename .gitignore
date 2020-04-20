@@ -8,3 +8,8 @@ __pycache__/
 *.ipynb_checkpoints
 
 .DS_store
+
+*.zip
+*.key
+*.mp4
+*.gif
