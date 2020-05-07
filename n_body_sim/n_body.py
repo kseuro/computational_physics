@@ -1,3 +1,7 @@
+# Author: Kai Stewart
+# Course: Phys-068
+# Spring 2020
+
 import time
 import random
 import numpy as np
@@ -6,36 +10,37 @@ from scipy.integrate import solve_ivp as IVP
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.animation as animation
+from tqdm import tqdm
 
 plt.rcParams['axes.facecolor']='#000000'
 
 random.seed(time.time())
 
 # Constants
-N = 1000
-G = 6.67e-11 * ( (365*86400)**2 / (1.5e11)**3 )
-M_S = 1.99e30
-AU = 1.5e11
-M_J = 1.898e27
-R_J = 5.203
-V_J = 13720 * 365 * 86400
+N     = 10
+G     = 6.67e-11 * ( (365*86400)**2 / (1.5e11)**3 )
+M_S   = 1.99e30
+AU    = 1.5e11
+M_J   = 1.8e27
+R_J   = 5.203
+V_J   = 13720 * (365 * 86400) # [Au/Yr]
 M_Ast = (10e10, 10e20)
-AUs = (2.1, 3.2)
+AUs   = (2.1, 3.2)
 
 # Sun
-x0_S = 0 # [AU]
-y0_S = 0
+x0_S  = 0 # [AU]
+y0_S  = 0
 vx0_S = 0
 vy0_S = 0 # [AU/Yr]
 
-# State vector
+# Initial state vector
 s0 = [vx0_S, vy0_S, x0_S, y0_S, 0, V_J, R_J, 0]
 
-# Integration time
-t = 10000; t_span = (0, t); first_step = 1.0; max_step = np.inf;
+# Integration time & steps sizes (default is np.inf)
+t = 100; t_span = (0, t); first_step = 1.0; max_step = np.inf;
 
 # Integration function args
-options = {'rtol':1e-8, 'atol':1e-12, 'max_step': np.inf}
+options = {'rtol':1e-8, 'atol':1e-12, 'max_step': max_step}
 
 # Derivative Function
 def D_grav(t, s_vec, m_arr, G):
@@ -59,7 +64,6 @@ def D_grav(t, s_vec, m_arr, G):
                                   The array has the form (N*4,):
                                   [dvx/dt_0, dvy/dt_0, dx/dt_0, dy/dt_0, ... , dvx/dt_N, dvy/dt_N, dx/dt_N, dy/dt_N]
     '''
-    verbose = False
 
     # Set the range of the for-loops to the length of the mass array
     N = len(m_arr)
@@ -111,14 +115,14 @@ def D_grav(t, s_vec, m_arr, G):
     # Create a single vector from all of the computed values
     dsdt = np.zeros(M)
 
-    idx = 0; place = 0
+    idx = 0; loc = 0
     for i in range(0, N):
-        dsdt[place]   = dvx[i]
-        dsdt[place+1] = dvy[i]
-        dsdt[place+2] = dx[i]
-        dsdt[place+3] = dy[i]
+        dsdt[loc]   = dvx[i]
+        dsdt[loc+1] = dvy[i]
+        dsdt[loc+2] = dx[i]
+        dsdt[loc+3] = dy[i]
         idx += 1
-        place += 4
+        loc += 4
 
     return dsdt
 
@@ -139,9 +143,9 @@ def make_asteroids(N, G, M_S, M_Ast, AUs):
         - This function generates randomized arrays corresponding to asteroid masses, their position components
           in cartesian coordinates [AU], and velocity components [AU/Yr]
         Args:
-            - N (int): number of asteroids to generate
-            - G (float): gravitational constant
-            - M_S (float): mass of the sun used to generate random asteroid velocities
+            - N       (int): number of asteroids to generate
+            - G     (float): gravitational constant
+            - M_S   (float): mass of the sun used to generate random asteroid velocities
             - M_Ast (tuple): 2-tuple of floats representing the low and high end of the masses
                              of asteroids in the asteroid belt
             - AUs (tuple): 2-tuple of astronomical unit used to compute starting positions
@@ -158,7 +162,7 @@ def make_asteroids(N, G, M_S, M_Ast, AUs):
     a_masses = np.zeros(N); a_x = np.zeros(N); a_y = np.zeros(N); v_x = np.zeros(N); v_y = np.zeros(N)
     # ---------------------------------------------------------------------------------------------- #
 
-    print(f'Generating {N} Asteroid(s)')
+    print('Generating {} Asteroid(s)'.format(N))
     # Loop over N asteroids and randomly allocate coordinates and velocities
     for i in range(N):
         # Randomly assign an asteroid mass in the given range using a uniform distribution
@@ -191,15 +195,14 @@ def make_asteroids(N, G, M_S, M_Ast, AUs):
 
 if __name__ == '__main__':
 
+    # Generate a collection of N ateroids
+    asteroids = make_asteroids(N, G, M_S, M_Ast, AUs)
+
     # Prepare lists for storing results
     r_init = []; r_final = []; x_coords = []; y_coords = []
 
-    for i in range(0, N):
-        # Periodically update progress to terminal
-        if N >= 1000 and i % 1000 == 0:
-            print("Asteroid: {}".format(i))
-        elif N <= 500 and i % 100 == 0:
-            print("Asteroid: {}".format(i))
+    progress = tqdm([i for i in range(0, N)])
+    for i, _ in enumerate(progress):
         # Calculate the asteroid's initial distance from the Sun
         r_init.append(np.sqrt(asteroids['ax'][i]**2 + asteroids['ay'][i]**2 ))
 
@@ -225,21 +228,24 @@ if __name__ == '__main__':
         x_coords.append(solution['y'][-2])
         y_coords.append(solution['y'][-1])
 
+    # Convert the lists to numpy arrays for easier handling
     x_coords = np.asarray(x_coords)
     y_coords = np.asarray(y_coords)
 
+    # Find the shortest list of coordinates
     min_x = min([x_coords[k].shape[0] for k in range(N)])
+    min_x = int(min_x)
 
+    # Save data for each object in the simulation
     z_coords = np.zeros((min_x))
     for i in range(0, N):
         data = np.vstack((x_coords[i][0:min_x], y_coords[i][0:min_x], z_coords))
         np.savetxt("./data/asteroids/asteroid{}.txt".format(i), data)
 
-    n = min_x
-    x_jup = [np.cos(2*np.pi/n*x)*R_J for x in range(0, n+1)]
-    y_jup = [np.sin(2*np.pi/n*x)*R_J for x in range(0, n+1)]
+    x_jup = [np.cos(2*np.pi/min_x*x)*R_J for x in range(0, min_x+1)]
+    y_jup = [np.sin(2*np.pi/min_x*x)*R_J for x in range(0, min_x+1)]
     data = np.vstack((x_jup[0:min_x], y_jup[0:min_x], z_coords))
-    np.savetxt("./data/jupiter/jupiter{0}.txt", data)
+    np.savetxt(f"./data/jupiter/jupiter{0}.txt", data)
 
     fig, ax = plt.subplots()
     plt.title("Initital Distribution of {} Asteroids\n between [{}, {}] AU".format(N, AUs[0], AUs[1] ))
